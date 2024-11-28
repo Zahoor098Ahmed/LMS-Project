@@ -1,18 +1,32 @@
 import React, { useState } from "react";
-import { db, storage } from "../config/firebase/firebaseconfig"; // Import Firebase storage
-import { collection, addDoc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+
+// Helper function to format date
+const formatDate = (date) => {
+  const options = {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    second: 'numeric',
+    hour12: true
+  };
+  return new Date(date).toLocaleDateString('en-US', options);
+};
 
 const TeacherDashboard = () => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [studentName, setStudentName] = useState("");
-  const [studentId, setStudentId] = useState("");
-  const [marks, setMarks] = useState("");
-  const [department, setDepartment] = useState("");
-  const [batch, setBatch] = useState("");
   const [assignmentFile, setAssignmentFile] = useState(null);
-  const [resultFile, setResultFile] = useState(null); // To store result file
+  const [assignments, setAssignments] = useState([]);
+  const [resultName, setResultName] = useState("");
+  const [resultMarks, setResultMarks] = useState("");
+  const [resultStudentId, setResultStudentId] = useState("");  
+  const [resultDepartment, setResultDepartment] = useState("");  
+  const [resultBatch, setResultBatch] = useState("");  
+  const [resultSemester, setResultSemester] = useState("");  
+  const [results, setResults] = useState([]);
   const [loadingAssignment, setLoadingAssignment] = useState(false);
   const [loadingResult, setLoadingResult] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
@@ -26,7 +40,7 @@ const TeacherDashboard = () => {
     }
   };
 
-  // Upload Assignment
+  // Handle assignment form submission
   const handleUploadAssignment = async () => {
     if (!title || !description || !assignmentFile) {
       alert("Please fill in all fields and upload a file.");
@@ -36,27 +50,25 @@ const TeacherDashboard = () => {
     setLoadingAssignment(true);
 
     try {
-      // Create a reference to Firebase Storage
-      const fileRef = ref(storage, `assignments/${assignmentFile.name}`);
-
-      // Upload the assignment file to Firebase Storage
-      await uploadBytes(fileRef, assignmentFile);
-
-      // Get the file download URL
-      const fileURL = await getDownloadURL(fileRef);
-
-      // Save the assignment details to Firestore
-      await addDoc(collection(db, "assignments"), {
+      const newAssignment = {
         title,
         description,
-        fileURL, // Save the file URL in Firestore
-        teacherId: "teacher_unique_id", // Use the logged-in teacher's ID here
-      });
+        fileName: assignmentFile.name,
+        submittedAt: new Date(), // Add the submission time
+      };
 
-      setSuccessMessage("Assignment uploaded successfully!");
+      setAssignments([...assignments, newAssignment]);
+
+      // Show success notification on the current screen (assignments screen)
+      setSuccessMessage("Assignment added successfully!");
       setTitle("");
       setDescription("");
-      setAssignmentFile(null); // Clear the file after upload
+      setAssignmentFile(null);
+
+      // Hide success notification after 3 seconds
+      setTimeout(() => {
+        setSuccessMessage("");
+      }, 3000);
     } catch (error) {
       console.error("Error uploading assignment:", error);
     } finally {
@@ -64,45 +76,42 @@ const TeacherDashboard = () => {
     }
   };
 
-  // Upload Result
-  const handleUploadResult = async () => {
-    if (!studentName || !studentId || !marks || !department || !batch || !resultFile) {
-      alert("Please fill in all fields and upload a result file.");
+  // Handle result form submission
+  const handleAddResult = () => {
+    if (!resultName || !resultMarks || !resultStudentId || !resultDepartment || !resultBatch || !resultSemester) {
+      alert("Please fill in all fields.");
       return;
     }
 
     setLoadingResult(true);
 
     try {
-      // Create a reference to Firebase Storage
-      const resultFileRef = ref(storage, `results/${resultFile.name}`);
+      const newResult = {
+        name: resultName,
+        studentId: resultStudentId,
+        department: resultDepartment,
+        batch: resultBatch,
+        semester: resultSemester,
+        marks: resultMarks,
+      };
 
-      // Upload the result file to Firebase Storage
-      await uploadBytes(resultFileRef, resultFile);
+      setResults([...results, newResult]);
 
-      // Get the file download URL
-      const resultFileURL = await getDownloadURL(resultFileRef);
+      // Show success notification on the current screen (results screen)
+      setSuccessMessage("Result added successfully!");
+      setResultName("");
+      setResultMarks("");
+      setResultStudentId("");  
+      setResultDepartment("");  
+      setResultBatch("");  
+      setResultSemester("");  
 
-      // Save the result details to Firestore
-      await addDoc(collection(db, "results"), {
-        studentName,
-        studentId,
-        marks: parseInt(marks),
-        department,
-        batch,
-        resultFileURL, // Save the result file URL in Firestore
-        teacherId: "teacher_unique_id", // Use the logged-in teacher's ID here
-      });
-
-      setSuccessMessage("Result uploaded successfully!");
-      setStudentName("");
-      setStudentId("");
-      setMarks("");
-      setDepartment("");
-      setBatch("");
-      setResultFile(null); // Clear the result file after upload
+      // Hide success notification after 3 seconds
+      setTimeout(() => {
+        setSuccessMessage("");
+      }, 3000);
     } catch (error) {
-      console.error("Error uploading result:", error);
+      console.error("Error adding result:", error);
     } finally {
       setLoadingResult(false);
     }
@@ -112,35 +121,31 @@ const TeacherDashboard = () => {
     <div className="min-h-screen bg-gray-100 flex flex-col">
       {/* Header Section */}
       <nav className="bg-blue-600 text-white py-4 shadow sticky top-0 left-0 z-50">
-        <div className="container mx-auto flex justify-between items-center px-6">
+        <div className="container mx-auto px-6 flex justify-between items-center">
           <h1 className="text-xl font-bold">Teacher Dashboard</h1>
-          <ul className="flex space-x-4">
-            <li>
-              <button
-                onClick={() => setActiveScreen("assignments")}
-                className={`px-4 py-2 ${
-                  activeScreen === "assignments" ? "bg-white text-blue-600" : "hover:bg-blue-700 hover:text-white"
-                } rounded-md transition duration-200`}
-              >
-                Assignments
-              </button>
-            </li>
-            <li>
-              <button
-                onClick={() => setActiveScreen("results")}
-                className={`px-4 py-2 ${
-                  activeScreen === "results" ? "bg-white text-blue-600" : "hover:bg-blue-700 hover:text-white"
-                } rounded-md transition duration-200`}
-              >
-                Results
-              </button>
-            </li>
-          </ul>
+          <div className="flex space-x-4">
+            <button
+              onClick={() => setActiveScreen("assignments")}
+              className={`${
+                activeScreen === "assignments" ? "bg-white text-blue-600" : "hover:bg-blue-700"
+              } px-4 py-2 rounded transition`}
+            >
+              Assignments
+            </button>
+            <button
+              onClick={() => setActiveScreen("results")}
+              className={`${
+                activeScreen === "results" ? "bg-white text-blue-600" : "hover:bg-blue-700"
+              } px-4 py-2 rounded transition`}
+            >
+              Results
+            </button>
+          </div>
         </div>
       </nav>
 
-     {/* Welcome Admin Section */}
-     <div className="bg-blue-100 text-blue-700 py-12">
+      {/* Welcome Section */}
+      <div className="bg-blue-100 text-blue-700 py-12">
         <div className="container mx-auto flex flex-col md:flex-row items-center justify-between px-6">
           <div className="w-full md:w-2/3 text-center md:text-left mb-6 md:mb-0">
             <h2 className="text-4xl font-extrabold mb-4">Welcome, Dear Teacher!</h2>
@@ -159,24 +164,18 @@ const TeacherDashboard = () => {
         </div>
       </div>
 
-
-
-
-
-      {/* Assignments Screen */}
+      {/* Assignments Form */}
       {activeScreen === "assignments" && (
-        <div className="container mx-auto p-6 px-6">
-          <div className="bg-white p-8 rounded shadow-md w-full max-w-lg mx-auto">
+        <div className="container mx-auto px-6 mt-8">
+          <div className="bg-white p-8 rounded shadow-md w-full max-w-7xl mx-auto">
             <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Upload Assignment</h2>
+            {/* Success Notification for Assignment */}
             {successMessage && (
-              <p className="bg-green-100 text-green-700 p-3 rounded mb-4 text-center">
+              <div className="bg-green-100 text-center text-green-700 border border-green-400 px-4 py-2 rounded mb-4">
                 {successMessage}
-              </p>
+              </div>
             )}
             <div className="mb-4">
-              <label htmlFor="title" className="block text-sm font-medium text-gray-700">
-                Assignment Title
-              </label>
               <input
                 type="text"
                 id="title"
@@ -187,9 +186,6 @@ const TeacherDashboard = () => {
               />
             </div>
             <div className="mb-4">
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                Assignment Description
-              </label>
               <textarea
                 id="description"
                 value={description}
@@ -200,9 +196,6 @@ const TeacherDashboard = () => {
               ></textarea>
             </div>
             <div className="mb-4">
-              <label htmlFor="assignmentFile" className="block text-sm font-medium text-gray-700">
-                Upload Assignment File
-              </label>
               <input
                 type="file"
                 id="assignmentFile"
@@ -212,113 +205,160 @@ const TeacherDashboard = () => {
             </div>
             <button
               onClick={handleUploadAssignment}
-              className={`w-full bg-blue-600 text-white p-3 rounded ${
-                loadingAssignment ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-700"
-              } transition`}
+              className={`w-full bg-blue-600 text-white p-3 rounded-lg ${loadingAssignment ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-700"}`}
               disabled={loadingAssignment}
             >
               {loadingAssignment ? "Uploading..." : "Upload Assignment"}
             </button>
           </div>
+
+          {/* Assignments Table */}
+          {assignments.length > 0 && (
+            <div className="mt-8 bg-white p-8 rounded shadow-md w-full max-w-7xl mx-auto">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Submitted Assignments</h2>
+              <div className="overflow-x-auto sm:overflow-hidden">  
+                <table className="table-auto border-collapse border border-gray-300 w-full text-center">
+                  <thead className="bg-blue-600 text-white">
+                    <tr>
+                      <th className="border border-gray-300 px-4 py-2">S.No</th>
+                      <th className="border border-gray-300 px-4 py-2">Title</th>
+                      <th className="border border-gray-300 px-4 py-2">Description</th>
+                      <th className="border border-gray-300 px-4 py-2">File Name</th>
+                      <th className="border border-gray-300 px-4 py-2">Submitted At</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {assignments.map((assignment, index) => (
+                      <tr key={index} className="odd:bg-gray-100 even:bg-gray-50 text-center">
+                        <td className="border border-gray-300 px-4 py-2">{index + 1}</td>
+                        <td className="border border-gray-300 px-4 py-2">{assignment.title}</td>
+                        <td className="border border-gray-300 px-4 py-2">{assignment.description}</td>
+                        <td className="border border-gray-300 px-4 py-2">{assignment.fileName}</td>
+                        <td className="border border-gray-300 px-4 py-2">{formatDate(assignment.submittedAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Results Screen */}
+      {/* Results Form */}
       {activeScreen === "results" && (
-        <div className="container mx-auto p-6 px-6">
-          <div className="bg-white p-8 rounded shadow-md w-full max-w-lg mx-auto">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Upload Result</h2>
+        <div className="container mx-auto px-6 mt-8">
+          <div className="bg-white p-8 rounded shadow-md w-full max-w-7xl mx-auto">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Add Student Result</h2>
+            {/* Success Notification for Results */}
             {successMessage && (
-              <p className="bg-green-100 text-green-700 p-3 rounded mb-4 text-center">
+              <div className="bg-green-100 text-center text-green-700 border border-green-400 px-4 py-2 rounded mb-4">
                 {successMessage}
-              </p>
+              </div>
             )}
             <div className="mb-4">
-              <label htmlFor="studentName" className="block text-sm font-medium text-gray-700">
-                Student Name
-              </label>
               <input
                 type="text"
-                id="studentName"
-                value={studentName}
-                onChange={(e) => setStudentName(e.target.value)}
-                placeholder="Enter student's name"
+                id="name"
+                value={resultName}
+                onChange={(e) => setResultName(e.target.value)}
+                placeholder="Enter student name"
                 className="mt-1 block w-full p-3 border rounded focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
             <div className="mb-4">
-              <label htmlFor="studentId" className="block text-sm font-medium text-gray-700">
-                Student ID
-              </label>
               <input
                 type="text"
                 id="studentId"
-                value={studentId}
-                onChange={(e) => setStudentId(e.target.value)}
+                value={resultStudentId}
+                onChange={(e) => setResultStudentId(e.target.value)}
                 placeholder="Enter student ID"
                 className="mt-1 block w-full p-3 border rounded focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
             <div className="mb-4">
-              <label htmlFor="marks" className="block text-sm font-medium text-gray-700">
-                Marks
-              </label>
-              <input
-                type="number"
-                id="marks"
-                value={marks}
-                onChange={(e) => setMarks(e.target.value)}
-                placeholder="Enter marks"
-                className="mt-1 block w-full p-3 border rounded focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-            <div className="mb-4">
-              <label htmlFor="department" className="block text-sm font-medium text-gray-700">
-                Department
-              </label>
               <input
                 type="text"
                 id="department"
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
+                value={resultDepartment}
+                onChange={(e) => setResultDepartment(e.target.value)}
                 placeholder="Enter department"
                 className="mt-1 block w-full p-3 border rounded focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
             <div className="mb-4">
-              <label htmlFor="batch" className="block text-sm font-medium text-gray-700">
-                Batch
-              </label>
               <input
                 type="text"
                 id="batch"
-                value={batch}
-                onChange={(e) => setBatch(e.target.value)}
+                value={resultBatch}
+                onChange={(e) => setResultBatch(e.target.value)}
                 placeholder="Enter batch"
                 className="mt-1 block w-full p-3 border rounded focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
             <div className="mb-4">
-              <label htmlFor="resultFile" className="block text-sm font-medium text-gray-700">
-                Upload Result File
-              </label>
               <input
-                type="file"
-                id="resultFile"
-                onChange={(e) => setResultFile(e.target.files[0])}
+                type="text"
+                id="semester"
+                value={resultSemester}
+                onChange={(e) => setResultSemester(e.target.value)}
+                placeholder="Enter semester"
+                className="mt-1 block w-full p-3 border rounded focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div className="mb-4">
+              <input
+                type="number"
+                id="marks"
+                value={resultMarks}
+                onChange={(e) => setResultMarks(e.target.value)}
+                placeholder="Enter marks"
                 className="mt-1 block w-full p-3 border rounded focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
             <button
-              onClick={handleUploadResult}
-              className={`w-full bg-blue-600 text-white p-3 rounded ${
-                loadingResult ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-700"
-              } transition`}
+              onClick={handleAddResult}
+              className={`w-full bg-blue-600 text-white p-3 rounded-lg ${loadingResult ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-700"}`}
               disabled={loadingResult}
             >
-              {loadingResult ? "Uploading..." : "Upload Result"}
+              {loadingResult ? "Adding..." : "Add Result"}
             </button>
           </div>
+
+          {/* Results Table */}
+          {results.length > 0 && (
+            <div className="mt-8 bg-white p-8 rounded shadow-md w-full max-w-7xl mx-auto">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Student Results</h2>
+              <div className="overflow-x-auto sm:overflow-hidden">
+                <table className="table-auto border-collapse border border-gray-300 w-full text-center">
+                  <thead className="bg-blue-600 text-white">
+                    <tr>
+                      <th className="border border-gray-300 px-4 py-2">S.No</th>
+                      <th className="border border-gray-300 px-4 py-2">Name</th>
+                      <th className="border border-gray-300 px-4 py-2">Student ID</th>
+                      <th className="border border-gray-300 px-4 py-2">Department</th>
+                      <th className="border border-gray-300 px-4 py-2">Batch</th>
+                      <th className="border border-gray-300 px-4 py-2">Semester</th>
+                      <th className="border border-gray-300 px-4 py-2">Marks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {results.map((result, index) => (
+                      <tr key={index} className="odd:bg-gray-100 even:bg-gray-50 text-center">
+                        <td className="border border-gray-300 px-4 py-2">{index + 1}</td>
+                        <td className="border border-gray-300 px-4 py-2">{result.name}</td>
+                        <td className="border border-gray-300 px-4 py-2">{result.studentId}</td>
+                        <td className="border border-gray-300 px-4 py-2">{result.department}</td>
+                        <td className="border border-gray-300 px-4 py-2">{result.batch}</td>
+                        <td className="border border-gray-300 px-4 py-2">{result.semester}</td>
+                        <td className="border border-gray-300 px-4 py-2">{result.marks}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

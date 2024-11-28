@@ -16,8 +16,8 @@ const AdminDashboard = () => {
               <button
                 className={`px-4 py-2 ${
                   currentTab === "teachers"
-                    ? "bg-white text-blue-600"
-                    : "text-white-300 hover:bg-blue-700 hover:text-white"
+                    ? "bg-white text-blue-700"
+                    : "hover:bg-blue-600 hover:text-white"
                 } rounded-md transition duration-200`}
                 onClick={() => setCurrentTab("teachers")}
               >
@@ -28,7 +28,7 @@ const AdminDashboard = () => {
               <button
                 className={`px-4 py-2 ${
                   currentTab === "students"
-                    ? "bg-blue-100 text-blue-700"
+                    ? "bg-white text-blue-700"
                     : "hover:bg-blue-600 hover:text-white"
                 } rounded-md transition duration-200`}
                 onClick={() => setCurrentTab("students")}

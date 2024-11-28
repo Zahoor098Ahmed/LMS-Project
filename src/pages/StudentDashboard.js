@@ -1,100 +1,53 @@
-import React, { useState, useEffect } from "react";
-import { db } from "../config/firebase/firebaseconfig";
-import { collection, getDocs, addDoc } from "firebase/firestore";
+import React, { useState } from "react";
 
 const StudentDashboard = () => {
-  const [assignments, setAssignments] = useState([]);
-  const [results, setResults] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [activeScreen, setActiveScreen] = useState("assignments");
-
-  const [assignmentFile, setAssignmentFile] = useState(null);
+  const [assignments, setAssignments] = useState([]);
+  const [successMessage, setSuccessMessage] = useState("");
   const [studentName, setStudentName] = useState("");
   const [studentId, setStudentId] = useState("");
   const [department, setDepartment] = useState("");
   const [semester, setSemester] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+  const [assignmentFile, setAssignmentFile] = useState(null);
 
-  // Fetch assignments from Firestore
-  const fetchAssignments = async () => {
-    try {
-      const querySnapshot = await getDocs(collection(db, "assignments"));
-      const fetchedAssignments = [];
-      querySnapshot.forEach((doc) => {
-        fetchedAssignments.push({ id: doc.id, ...doc.data() });
-      });
-      setAssignments(fetchedAssignments);
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching assignments:", error);
-      setLoading(false);
-    }
-  };
+  // Toggle between screens
+  const handleToggleScreen = (screen) => setActiveScreen(screen);
 
-  // Fetch results from Firestore
-  const fetchResults = async () => {
-    try {
-      const querySnapshot = await getDocs(collection(db, "results"));
-      const fetchedResults = [];
-      querySnapshot.forEach((doc) => {
-        fetchedResults.push({ id: doc.id, ...doc.data() });
-      });
-      setResults(fetchedResults);
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching results:", error);
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchAssignments();
-    fetchResults();
-  }, []);
-
-  const handleAssignmentUpload = async () => {
+  // Handle assignment submission
+  const handleAssignmentSubmit = () => {
     if (!assignmentFile || !studentName || !studentId || !department || !semester) {
-      alert("Please fill in all fields and select an assignment file.");
+      alert("Please fill in all fields and select a file.");
       return;
     }
 
-    setLoading(true);
-    try {
-      // Logic to upload the assignment file to Firebase storage and save its details to Firestore
-      await addDoc(collection(db, "submittedAssignments"), {
-        studentName,
-        studentId,
-        department,
-        semester,
-        fileUrl: "mock-file-url", // Replace with actual file URL after upload
-        assignmentId: "mock-assignment-id", // Replace with actual assignment ID
-      });
+    const currentDateTime = new Date().toLocaleString(); // Get the current date and time in a readable format
 
-      setSuccessMessage("Assignment submitted successfully!");
-      setStudentName("");
-      setStudentId("");
-      setDepartment("");
-      setSemester("");
-      setAssignmentFile(null);
+    const newAssignment = {
+      id: Date.now(),
+      studentName,
+      studentId,
+      department,
+      semester,
+      fileName: assignmentFile.name,
+      submittedAt: currentDateTime, // Store the submission timestamp
+    };
 
-      // Fetch updated assignments
-      fetchAssignments();
-    } catch (error) {
-      console.error("Error uploading assignment:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    setAssignments([...assignments, newAssignment]);
+    setStudentName("");
+    setStudentId("");
+    setDepartment("");
+    setSemester("");
+    setAssignmentFile(null);
+    setSuccessMessage("Assignment submitted successfully!");
 
-  const handleToggleScreen = (screen) => {
-    setActiveScreen(screen);
+    setTimeout(() => setSuccessMessage(""), 3000);
   };
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Sticky Navigation Bar */}
-      <nav className="bg-blue-600 text-white p-4 shadow sticky top-0 left-0 z-10">
-        <div className="container mx-auto flex justify-between items-center">
+      {/* Navigation Bar */}
+      <nav className="bg-blue-600 text-white p-4 shadow sticky top-0">
+        <div className="container mx-auto flex justify-between items-center px-6">
           <h1 className="text-xl font-bold">Student Dashboard</h1>
           <ul className="flex space-x-6">
             <li>
@@ -103,8 +56,8 @@ const StudentDashboard = () => {
                 className={`${
                   activeScreen === "assignments"
                     ? "bg-white text-blue-600"
-                    : "text-white-300 hover:bg-blue-700 hover:text-white"
-                } px-4 py-2 rounded-md transition duration-200`}
+                    : "hover:bg-blue-700"
+                } px-4 py-2 rounded transition`}
               >
                 Assignments
               </button>
@@ -115,8 +68,8 @@ const StudentDashboard = () => {
                 className={`${
                   activeScreen === "results"
                     ? "bg-white text-blue-600"
-                    : "text-white-300 hover:bg-blue-700 hover:text-white"
-                } px-4 py-2 rounded-md transition duration-200`}
+                    : "hover:bg-blue-700"
+                } px-4 py-2 rounded transition`}
               >
                 Results
               </button>
@@ -126,19 +79,21 @@ const StudentDashboard = () => {
       </nav>
 
       {/* Welcome Section */}
-      <div className="bg-blue-100 text-blue-700 py-12">
-        <div className="container mx-auto flex flex-col md:flex-row items-center justify-between px-6">
-          <div className="w-full md:w-2/3 text-center md:text-left mb-6 md:mb-0">
-            <h2 className="text-4xl font-extrabold mb-4">Welcome, Dear Student!</h2>
-            <p className="text-lg">
-              Stay organized by viewing your assignments and results here. Keep track of your progress and submit your work seamlessly.
+      <div className="bg-blue-100 py-12">
+        <div className="container mx-auto flex flex-col md:flex-row items-center px-6">
+          <div className="md:w-2/3 text-center md:text-left">
+            <h2 className="text-4xl font-bold mb-4 text-blue-700">
+              Welcome, Student!
+            </h2>
+            <p className="text-lg text-blue-600">
+              Manage your assignments and results seamlessly in one place.
             </p>
           </div>
-          <div className="w-full md:w-1/3 flex justify-center">
+          <div className="md:w-1/3 flex justify-center">
             <img
               src="https://cdn-icons-png.flaticon.com/512/3449/3449678.png"
-              alt="Student Dashboard Logo"
-              className="w-40 h-40 rounded-lg shadow-lg border border-blue-300"
+              alt="Student Dashboard"
+              className="w-40 h-40"
             />
           </div>
         </div>
@@ -149,100 +104,104 @@ const StudentDashboard = () => {
         {activeScreen === "assignments" && (
           <>
             <h2 className="text-2xl font-bold mb-6">Assignments</h2>
-            {loading ? (
-              <p className="text-gray-600">Loading assignments...</p>
-            ) : assignments.length > 0 ? (
-              <ul>
-                {assignments.map((assignment) => (
-                  <li
-                    key={assignment.id}
-                    className="border p-4 mb-4 rounded-lg shadow hover:shadow-md transition"
-                  >
-                    <h3 className="text-lg font-semibold text-blue-600">{assignment.title}</h3>
-                    <p className="text-gray-700">{assignment.description}</p>
-                    <p className="text-sm text-gray-500 mt-2">
-                      Due: {assignment.dueDate || "N/A"}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-gray-600">No assignments found.</p>
+
+            {/* Success Message */}
+            {successMessage && (
+              <div className="bg-green-100 text-center text-green-700 border border-green-400 px-4 py-2 rounded mb-4">
+                {successMessage}
+              </div>
             )}
 
-            <div className="bg-white shadow rounded-lg p-6 mt-6">
-              <h3 className="text-xl font-bold mb-4">Upload Your Assignment</h3>
-              {successMessage && (
-                <p className="text-green-500">{successMessage}</p>
-              )}
+            {/* Assignment Submission Form */}
+            <div className="bg-white shadow rounded-lg p-6 mb-8">
+              <h3 className="text-xl font-bold mb-4">Submit Your Assignment</h3>
               <input
                 type="file"
                 onChange={(e) => setAssignmentFile(e.target.files[0])}
-                className="mb-4"
+                className="block w-full border p-2 mb-4 rounded"
               />
               <input
                 type="text"
                 placeholder="Your Name"
                 value={studentName}
                 onChange={(e) => setStudentName(e.target.value)}
-                className="border p-2 w-full mb-4"
+                className="block w-full border p-2 mb-4 rounded"
               />
               <input
                 type="text"
                 placeholder="Your ID"
                 value={studentId}
                 onChange={(e) => setStudentId(e.target.value)}
-                className="border p-2 w-full mb-4"
+                className="block w-full border p-2 mb-4 rounded"
               />
               <input
                 type="text"
-                placeholder="Your Department"
+                placeholder="Department"
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
-                className="border p-2 w-full mb-4"
+                className="block w-full border p-2 mb-4 rounded"
               />
               <input
                 type="text"
-                placeholder="Your Semester"
+                placeholder="Semester"
                 value={semester}
                 onChange={(e) => setSemester(e.target.value)}
-                className="border p-2 w-full mb-4"
+                className="block w-full border p-2 mb-4 rounded"
               />
               <button
-                onClick={handleAssignmentUpload}
-                className="bg-blue-600 text-white p-3 rounded mt-4"
+                onClick={handleAssignmentSubmit}
+                className="bg-blue-600 text-white px-4 py-2 rounded w-full hover:bg-blue-700 transition"
               >
-                Upload Assignment
+                Submit Assignment
               </button>
             </div>
+
+            {/* Display Submitted Assignments as Table */}
+            <h3 className="text-xl font-bold mb-4">Submitted Assignments</h3>
+            {assignments.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-full bg-white border border-gray-300 shadow-lg rounded-lg">
+                  <thead className="bg-blue-600 text-white">
+                    <tr>
+                      <th className="px-4 py-2 border text-center">S.No</th>
+                      <th className="px-4 py-2 border text-center">Student Name</th>
+                      <th className="px-4 py-2 border text-center">Student ID</th>
+                      <th className="px-4 py-2 border text-center">Department</th>
+                      <th className="px-4 py-2 border text-center">Semester</th>
+                      <th className="px-4 py-2 border text-center">File</th>
+                      <th className="px-4 py-2 border text-center">Submitted At</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {assignments.map((assignment, index) => (
+                      <tr
+                        key={assignment.id}
+                        className={`${
+                          index % 2 === 0 ? "bg-gray-100" : "bg-white"
+                        }`}
+                      >
+                        <td className="px-4 py-2 border text-center">{index + 1}</td>
+                        <td className="px-4 py-2 border text-center">{assignment.studentName}</td>
+                        <td className="px-4 py-2 border text-center">{assignment.studentId}</td>
+                        <td className="px-4 py-2 border text-center">{assignment.department}</td>
+                        <td className="px-4 py-2 border text-center">{assignment.semester}</td>
+                        <td className="px-4 py-2 border text-center">{assignment.fileName}</td>
+                        <td className="px-4 py-2 border text-center">{assignment.submittedAt}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-gray-600">No assignments submitted yet.</p>
+            )}
           </>
         )}
 
         {activeScreen === "results" && (
           <>
             <h2 className="text-2xl font-bold mb-6">Results</h2>
-            {loading ? (
-              <p className="text-gray-600">Loading results...</p>
-            ) : results.length > 0 ? (
-              <ul>
-                {results.map((result) => (
-                  <li
-                    key={result.id}
-                    className="border p-4 mb-4 rounded-lg shadow hover:shadow-md transition"
-                  >
-                    <h3 className="text-lg font-semibold text-blue-600">
-                      {result.studentName}
-                    </h3>
-                    <p className="text-gray-700">Marks: {result.marks}</p>
-                    <p className="text-sm text-gray-500 mt-2">
-                      Department: {result.department}, Semester: {result.semester}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-gray-600">No results available.</p>
-            )}
+            <p className="text-gray-600">No results available yet.</p>
           </>
         )}
       </div>
