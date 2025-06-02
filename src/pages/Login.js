@@ -23,10 +23,13 @@ const Login = () => {
       // Dummy logic for role-based navigation
       if (user.email === "admin@gmail.com") {
         navigate("/admin");
+        // admin password is admin123
       } else if (user.email === "teacher@gmail.com") {
         navigate("/teacher");
+        // teacher password is teacher123
       } else {
         navigate("/student");
+        // student password is student123
       }
     } catch (error) {
       console.error("Login failed:", error);
