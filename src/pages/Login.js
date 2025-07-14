@@ -44,7 +44,7 @@ const Login = () => {
         <h1 className="text-5xl font-bold text-center mb-4">School Learning Management System</h1>
         <p className="text-xl text-center mb-6">Empowering Students and Teachers for Success</p>
         <img
-          src="/path/to/lms-illustration.png" // Replace with your image URL
+          src="https://www.empowerelearning.com/blog/wp-content/uploads/2023/05/Blog_A-Guide-to-Selecting-the-Right-LMS-1.jpg" // Replace with your image URL
           alt="LMS Illustration"
           className="w-3/4 max-w-md mb-8"
         />
